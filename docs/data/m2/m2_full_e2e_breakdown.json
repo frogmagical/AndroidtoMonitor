@@ -1,0 +1,13 @@
+{
+  "cap2enc_p50_ms": 12.9,
+  "cap2enc_p95_ms": 16.1,
+  "enc2sent_p50_ms": 0.1,
+  "enc2sent_p95_ms": 0.1,
+  "bitrate_min_kbps": 712.144,
+  "bitrate_max_kbps": 963.88,
+  "bitrate_mean_kbps": 842.9198933333333,
+  "full_e2e_p50_point_ms": -6.318812499999922,
+  "full_e2e_p95_point_ms": 4.431187499999989,
+  "full_e2e_p50_bound_ms": 24.25,
+  "full_e2e_p95_bound_ms": 34.88631249999999
+}

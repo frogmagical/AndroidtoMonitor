@@ -1,0 +1,23 @@
+{
+  "active_buckets": 76,
+  "total_buckets": 94,
+  "total_frames": 2250,
+  "total_drops": 0,
+  "recvToRender_p50_ms": 11.25,
+  "recvToRender_p95_ms": 14.2,
+  "ptsToRecv_raw_p50_ms": 1122.4,
+  "ptsToRecv_raw_p95_ms": 1127.0,
+  "offset_before_ms": 1154.554875,
+  "offset_after_ms": 1151.38275,
+  "offset_mean_ms": 1152.9688125,
+  "offset_drift_ms": -3.172125000000051,
+  "offset_uncertainty_ms": 30.455125,
+  "ptsToRecv_corrected_p50_ms": -30.568812499999922,
+  "ptsToRecv_corrected_p95_ms": -25.968812500000013,
+  "ptsToRecv_p50_sensitivity_before_ms": -32.15487499999995,
+  "ptsToRecv_p50_sensitivity_after_ms": -28.982749999999896,
+  "e2e_p50_ms": -19.318812499999922,
+  "e2e_p95_ms": -11.768812500000013,
+  "gate_p95_ms": 100.0,
+  "gate_pass": true
+}

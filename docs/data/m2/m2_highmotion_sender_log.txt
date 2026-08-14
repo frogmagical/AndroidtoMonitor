@@ -1,0 +1,38 @@
+[00:20:11.100] INFO  a2m-sender starting: 1080x2400 @30fps, 12.0 Mbps, port 5001
+[00:20:11.125] INFO  adb forward tcp:5001 tcp:5001 (serial=1b2f0fc) ok
+[00:20:11.136] INFO  capture target: adapter[0] output[2] \\.\DISPLAY10 on 'NVIDIA GeForce RTX 5070 Ti' 1080x2400 rotation=identity
+[00:20:11.263] WARN  ActivateObject('AMDh264Encoder') failed: 0x8007000E (Not enough memory resources are available to complete this operation.)
+[00:20:11.264] WARN  ActivateObject('AMDh264Encoder') failed: 0x8007000E (Not enough memory resources are available to complete this operation.)
+[00:20:11.301] INFO  encoder MFT: 'NVIDIA H.264 Encoder MFT' (HARDWARE, async, d3d11_aware=yes)
+[00:20:11.301] WARN  ICodecAPI AVEncMPVDefaultBPictureCount=0 not accepted: 0x80070057 (The parameter is incorrect.)
+[00:20:11.301] WARN  ICodecAPI AVEncNumWorkerThreads=1 not accepted: 0x80070057 (The parameter is incorrect.)
+[00:20:11.325] WARN  ICodecAPI AVEncMPVDefaultBPictureCount=0 not accepted: 0x80070057 (The parameter is incorrect.)
+[00:20:11.325] WARN  ICodecAPI AVEncNumWorkerThreads=1 not accepted: 0x80070057 (The parameter is incorrect.)
+[00:20:11.325] INFO  cached SPS(33 B)/PPS(8 B) from MF_MT_MPEG_SEQUENCE_HEADER
+[00:20:11.325] INFO  encoder ready: 1080x2400 @30fps, 12.0 Mbps CBR, GOP=60, B-frames=0
+[00:20:11.325] INFO  desktop surface: 1080x2400 format=87
+[00:20:11.326] INFO  connected to 127.0.0.1:5001
+[00:20:11.326] INFO  handshake sent: {"width":1080,"height":2400,"fps":30,"codec":"h264"}
+[00:20:12.326] INFO  fps=30 idr=1 cap2enc_p50=4.7ms/p95=14.1ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1516150 (12.1 Mbps) drops=0(send)/0(enc) reconn=0 resent=0 conn=up
+[00:20:13.326] INFO  fps=30 idr=0 cap2enc_p50=5.0ms/p95=14.2ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1478404 (11.8 Mbps) drops=0(send)/0(enc) reconn=0 resent=1 conn=up
+[00:20:14.326] INFO  fps=30 idr=1 cap2enc_p50=3.8ms/p95=10.1ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1473656 (11.8 Mbps) drops=0(send)/0(enc) reconn=0 resent=0 conn=up
+[00:20:15.326] INFO  fps=30 idr=0 cap2enc_p50=3.7ms/p95=15.7ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1565607 (12.5 Mbps) drops=0(send)/0(enc) reconn=0 resent=1 conn=up
+[00:20:16.332] INFO  fps=30 idr=1 cap2enc_p50=5.6ms/p95=14.2ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1655522 (13.2 Mbps) drops=0(send)/0(enc) reconn=0 resent=0 conn=up
+[00:20:17.326] INFO  fps=30 idr=0 cap2enc_p50=6.2ms/p95=16.6ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1466119 (11.7 Mbps) drops=0(send)/0(enc) reconn=0 resent=0 conn=up
+[00:20:18.326] INFO  fps=30 idr=1 cap2enc_p50=3.7ms/p95=13.5ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1311298 (10.5 Mbps) drops=0(send)/0(enc) reconn=0 resent=0 conn=up
+[00:20:19.326] INFO  fps=30 idr=0 cap2enc_p50=8.7ms/p95=17.2ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1604464 (12.8 Mbps) drops=0(send)/0(enc) reconn=0 resent=1 conn=up
+[00:20:20.326] INFO  fps=30 idr=1 cap2enc_p50=5.1ms/p95=16.0ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1386670 (11.1 Mbps) drops=0(send)/0(enc) reconn=0 resent=1 conn=up
+[00:20:21.326] INFO  fps=30 idr=0 cap2enc_p50=4.6ms/p95=15.6ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1565957 (12.5 Mbps) drops=0(send)/0(enc) reconn=0 resent=1 conn=up
+[00:20:22.326] INFO  fps=30 idr=1 cap2enc_p50=5.6ms/p95=15.6ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1827279 (14.6 Mbps) drops=0(send)/0(enc) reconn=0 resent=1 conn=up
+[00:20:23.326] INFO  fps=30 idr=0 cap2enc_p50=8.8ms/p95=15.9ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1721139 (13.8 Mbps) drops=0(send)/0(enc) reconn=0 resent=0 conn=up
+[00:20:24.326] INFO  fps=30 idr=1 cap2enc_p50=3.7ms/p95=16.6ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1406883 (11.3 Mbps) drops=0(send)/0(enc) reconn=0 resent=1 conn=up
+[00:20:25.332] INFO  fps=30 idr=0 cap2enc_p50=3.6ms/p95=15.6ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1428007 (11.4 Mbps) drops=0(send)/0(enc) reconn=0 resent=0 conn=up
+[00:20:26.332] INFO  fps=30 idr=1 cap2enc_p50=5.7ms/p95=16.1ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1277716 (10.2 Mbps) drops=0(send)/0(enc) reconn=0 resent=1 conn=up
+[00:20:27.328] INFO  fps=30 idr=0 cap2enc_p50=4.9ms/p95=16.1ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1295951 (10.4 Mbps) drops=0(send)/0(enc) reconn=0 resent=1 conn=up
+[00:20:28.326] INFO  fps=30 idr=1 cap2enc_p50=6.8ms/p95=16.1ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1532061 (12.3 Mbps) drops=0(send)/0(enc) reconn=0 resent=0 conn=up
+[00:20:29.329] INFO  fps=30 idr=0 cap2enc_p50=6.5ms/p95=16.4ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1273318 (10.2 Mbps) drops=0(send)/0(enc) reconn=0 resent=0 conn=up
+[00:20:30.331] INFO  fps=30 idr=1 cap2enc_p50=6.5ms/p95=16.1ms enc2sent_p50=0.1ms/p95=0.1ms bytes=1597076 (12.8 Mbps) drops=0(send)/0(enc) reconn=0 resent=0 conn=up
+[00:20:31.326] INFO  fps=30 idr=0 cap2enc_p50=6.2ms/p95=16.7ms enc2sent_p50=0.1ms/p95=0.2ms bytes=1416722 (11.3 Mbps) drops=0(send)/0(enc) reconn=0 resent=1 conn=up
+[00:20:31.326] INFO  duration reached, stopping
+[00:20:31.326] INFO  stopping...
+[00:20:31.379] INFO  final: encoder='NVIDIA H.264 Encoder MFT' (HW) submitted=601 resent_static=10 sent=600 bytes=29799999 drops=0 encoder_drops=0 reconnects=0
