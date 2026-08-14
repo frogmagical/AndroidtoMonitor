@@ -1,0 +1,26 @@
+# Build outputs
+bin/
+obj/
+build/
+out/
+*.user
+
+# Android / Gradle
+.gradle/
+local.properties
+*.apk
+*.aab
+captures/
+
+# IDE
+.vs/
+.idea/
+*.iml
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Logs / temp
+*.log
+*.tmp
