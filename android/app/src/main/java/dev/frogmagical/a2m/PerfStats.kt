@@ -17,13 +17,20 @@ class PerfStats {
         private const val TAG = "A2M_PERF"
     }
 
-    private data class Snapshot(val frames: Int, val drops: Int, val bytes: Long, val latencies: List<Double>)
+    private data class Snapshot(
+        val frames: Int,
+        val drops: Int,
+        val bytes: Long,
+        val latencies: List<Double>,
+        val ptsToRecvLatencies: List<Double>,
+    )
 
     private val lock = Object()
     private var frameCount = 0
     private var dropCount = 0
     private var byteCount = 0L
     private val latenciesMs = ArrayList<Double>()
+    private val ptsToRecvLatenciesMs = ArrayList<Double>()
 
     @Volatile var lastFps: Double = 0.0
         private set
@@ -34,6 +41,14 @@ class PerfStats {
     @Volatile var lastP95Ms: Double = 0.0
         private set
     @Volatile var lastDrops: Int = 0
+        private set
+
+    /** Raw (clock-offset-uncorrected) sender-timestamp -> receiver-completion latency, i.e.
+     * (recvEpochUs - pts_us). Only meaningful after subtracting a PC<->Android clock offset
+     * estimate (see tools/m1/clock_offset.py); logged as-is here per docs/M1-REPORT.md. */
+    @Volatile var lastPtsToRecvP50Ms: Double = 0.0
+        private set
+    @Volatile var lastPtsToRecvP95Ms: Double = 0.0
         private set
 
     private val handler = Handler(Looper.getMainLooper())
@@ -74,29 +89,47 @@ class PerfStats {
         synchronized(lock) { dropCount += n }
     }
 
+    /** Called as soon as a video frame's payload finishes arriving (before decode), so it's
+     * recorded even for frames later dropped by the decoder's backlog policy. */
+    fun recordPtsToRecv(ptsUs: Long, recvEpochUs: Long) {
+        val latencyMs = (recvEpochUs - ptsUs) / 1000.0
+        synchronized(lock) { ptsToRecvLatenciesMs.add(latencyMs) }
+    }
+
     private fun flush() {
         val snap = synchronized(lock) {
-            val s = Snapshot(frameCount, dropCount, byteCount, ArrayList(latenciesMs))
+            val s = Snapshot(
+                frameCount, dropCount, byteCount,
+                ArrayList(latenciesMs), ArrayList(ptsToRecvLatenciesMs)
+            )
             frameCount = 0
             dropCount = 0
             byteCount = 0
             latenciesMs.clear()
+            ptsToRecvLatenciesMs.clear()
             s
         }
         val sorted = snap.latencies.sorted()
         val p50 = percentile(sorted, 0.50)
         val p95 = percentile(sorted, 0.95)
 
+        val ptsSorted = snap.ptsToRecvLatencies.sorted()
+        val ptsP50 = percentile(ptsSorted, 0.50)
+        val ptsP95 = percentile(ptsSorted, 0.95)
+
         lastFps = snap.frames.toDouble()
         lastBitrateKbps = snap.bytes * 8.0 / 1000.0
         lastP50Ms = p50
         lastP95Ms = p95
         lastDrops = snap.drops
+        lastPtsToRecvP50Ms = ptsP50
+        lastPtsToRecvP95Ms = ptsP95
 
         Log.i(
             TAG,
-            "frames=%d drops=%d recvToRenderP50ms=%.1f recvToRenderP95ms=%.1f bitrateKbps=%.0f".format(
-                snap.frames, snap.drops, p50, p95, lastBitrateKbps
+            ("frames=%d drops=%d recvToRenderP50ms=%.1f recvToRenderP95ms=%.1f " +
+                "ptsToRecvP50ms=%.1f ptsToRecvP95ms=%.1f bitrateKbps=%.0f").format(
+                snap.frames, snap.drops, p50, p95, ptsP50, ptsP95, lastBitrateKbps
             )
         )
     }

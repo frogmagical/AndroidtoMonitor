@@ -106,8 +106,9 @@ class MainActivity : Activity(), A2mListener, SurfaceHolder.Callback {
         decoder?.configure(width, height, fps)
     }
 
-    override fun onVideoFrame(data: ByteArray, length: Int, ptsUs: Long, flags: Int, recvTimeNs: Long) {
+    override fun onVideoFrame(data: ByteArray, length: Int, ptsUs: Long, flags: Int, recvTimeNs: Long, recvEpochUs: Long) {
         stats.recordBytes(length)
+        stats.recordPtsToRecv(ptsUs, recvEpochUs)
         decoder?.onVideoFrame(data, length, ptsUs, flags)
     }
 
@@ -124,9 +125,10 @@ class MainActivity : Activity(), A2mListener, SurfaceHolder.Callback {
 
     private fun updateStatusText() {
         val text = if (connected) {
-            "A2M connected %dx%d@%d | fps=%.0f p50=%.1fms p95=%.1fms drops=%d br=%.0fkbps".format(
+            "A2M connected %dx%d@%d | fps=%.0f p50=%.1fms p95=%.1fms drops=%d br=%.0fkbps\nrawSend->recv p50=%.1fms p95=%.1fms (uncalibrated)".format(
                 lastWidth, lastHeight, lastFps,
-                stats.lastFps, stats.lastP50Ms, stats.lastP95Ms, stats.lastDrops, stats.lastBitrateKbps
+                stats.lastFps, stats.lastP50Ms, stats.lastP95Ms, stats.lastDrops, stats.lastBitrateKbps,
+                stats.lastPtsToRecvP50Ms, stats.lastPtsToRecvP95Ms
             )
         } else {
             "A2M waiting on 127.0.0.1:$PORT"

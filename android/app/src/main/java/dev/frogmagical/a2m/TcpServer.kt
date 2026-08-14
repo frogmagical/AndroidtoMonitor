@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicReference
  */
 interface A2mListener {
     fun onHandshake(width: Int, height: Int, fps: Int, codec: String)
-    fun onVideoFrame(data: ByteArray, length: Int, ptsUs: Long, flags: Int, recvTimeNs: Long)
+    fun onVideoFrame(data: ByteArray, length: Int, ptsUs: Long, flags: Int, recvTimeNs: Long, recvEpochUs: Long)
     fun onConnected()
     fun onDisconnected()
 }
@@ -152,8 +152,13 @@ class TcpServer(private val port: Int, private val listener: A2mListener) : Thre
                     TYPE_VIDEO -> {
                         val payload = ByteArray(payloadLen)
                         input.readFully(payload, 0, payloadLen)
+                        // Captured back-to-back so they represent the same instant: recvTimeNs
+                        // (monotonic) drives the local recv->render measurement, recvEpochUs
+                        // (wall clock) is compared against the sender's pts_us for the raw
+                        // (clock-offset-uncorrected) send->recv latency.
                         val recvTimeNs = System.nanoTime()
-                        listener.onVideoFrame(payload, payloadLen, ptsUs, flags, recvTimeNs)
+                        val recvEpochUs = System.currentTimeMillis() * 1000L
+                        listener.onVideoFrame(payload, payloadLen, ptsUs, flags, recvTimeNs, recvEpochUs)
                     }
                     TYPE_HEARTBEAT -> {
                         if (payloadLen > 0) skipFully(input, payloadLen)
