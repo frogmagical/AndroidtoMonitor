@@ -26,6 +26,17 @@
 
 namespace a2m {
 
+// NVENC's MF wrapper accepts CODECAPI_AVEncCommonRateControlMode=CBR but does not
+// behave like CBR (M2-REPORT §6): it overshoots hard around IDRs and, worse, pads
+// a completely static screen up to the target rate. Peak-constrained VBR keeps the
+// same ceiling while letting idle content cost almost nothing.
+enum class RateControlMode {
+    Cbr,
+    PeakConstrainedVbr,
+};
+
+const char* RateControlName(RateControlMode mode);
+
 struct EncodedFrame {
     std::vector<uint8_t> payload;  // Annex-B access unit (SPS+PPS prepended on IDR)
     uint16_t flags = 0;            // kFlagIdr / kFlagSpsPps
@@ -45,7 +56,8 @@ public:
     Encoder& operator=(const Encoder&) = delete;
 
     // `device` must have multithread protection enabled.
-    bool Initialize(ID3D11Device* device, int width, int height, int fps, uint32_t bitrateBps);
+    bool Initialize(ID3D11Device* device, int width, int height, int fps, uint32_t bitrateBps,
+                    RateControlMode rc);
     void SetFrameCallback(FrameCallback cb) { callback_ = std::move(cb); }
 
     // Hands an NV12 texture to the encoder. Queue depth is 1: if a frame is still
@@ -72,6 +84,7 @@ public:
 private:
     bool ActivateTransform(int width, int height);
     bool ConfigureCodecApi(bool afterTypes);
+    void ApplyRateControl(uint32_t bitrateBps);
     bool ConfigureTypes(int width, int height, int fps, uint32_t bitrateBps);
     void CacheSequenceHeader();
 
@@ -99,6 +112,7 @@ private:
     int width_ = 0;
     int height_ = 0;
     int fps_ = 30;
+    RateControlMode rc_ = RateControlMode::PeakConstrainedVbr;
 
     std::mutex mutex_;        // guards the input slot
     std::mutex outputMutex_;  // serialises ProcessOutput / bitstream assembly

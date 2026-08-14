@@ -12,6 +12,7 @@ endif()
 add_executable(a2m-sender
     src/main.cpp
     src/capture.cpp
+    src/cursor.cpp
     src/encoder.cpp
     src/sender.cpp
     src/protocol.cpp
@@ -36,8 +37,10 @@ if(MSVC)
 endif()
 
 # Windows SDK / Media Foundation only - no third-party dependencies.
+# (d3dcompiler is a Windows SDK / OS component, used for the cursor blend shader.)
 target_link_libraries(a2m-sender PRIVATE
     d3d11
+    d3dcompiler
     dxgi
     dxguid
     mf

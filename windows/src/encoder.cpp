@@ -224,16 +224,18 @@ bool Encoder::ActivateTransform(int width, int height) {
     return false;
 }
 
+const char* RateControlName(RateControlMode mode) {
+    return mode == RateControlMode::Cbr ? "CBR" : "PeakConstrainedVBR";
+}
+
 bool Encoder::ConfigureCodecApi(bool afterTypes) {
     if (!codecApi_) {
         if (!afterTypes) LOGW("encoder does not expose ICodecAPI; low-latency knobs unavailable");
         return false;
     }
 
-    // REQUIREMENTS §4.2: low latency, CBR, no B-frames, IDR every 2 seconds.
+    // REQUIREMENTS §4.2: low latency, no B-frames, IDR every 2 seconds.
     SetCodecBool(codecApi_.Get(), CODECAPI_AVLowLatencyMode, true, "AVLowLatencyMode");
-    SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncCommonRateControlMode,
-                 eAVEncCommonRateControlMode_CBR, "AVEncCommonRateControlMode(CBR)");
     SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncMPVDefaultBPictureCount, 0,
                  "AVEncMPVDefaultBPictureCount");
     SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncMPVGOPSize, static_cast<UINT32>(fps_ * 2),
@@ -243,6 +245,39 @@ bool Encoder::ConfigureCodecApi(bool afterTypes) {
     // Keep the encoder from buffering more than one frame internally.
     SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncNumWorkerThreads, 1, "AVEncNumWorkerThreads");
     return true;
+}
+
+// Rate control has to be (re)applied after the output type is known, otherwise the
+// NVIDIA MFT quietly keeps its defaults. Every setter result is logged because
+// M2-REPORT §6 showed the accepted-but-ignored case is the one that bites.
+void Encoder::ApplyRateControl(uint32_t bitrateBps) {
+    if (!codecApi_) return;
+
+    const UINT32 mode = (rc_ == RateControlMode::Cbr)
+                            ? static_cast<UINT32>(eAVEncCommonRateControlMode_CBR)
+                            : static_cast<UINT32>(eAVEncCommonRateControlMode_PeakConstrainedVBR);
+    const bool modeOk = SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncCommonRateControlMode, mode,
+                                     rc_ == RateControlMode::Cbr
+                                         ? "AVEncCommonRateControlMode(CBR)"
+                                         : "AVEncCommonRateControlMode(PeakConstrainedVBR)");
+
+    const bool meanOk = SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncCommonMeanBitRate, bitrateBps,
+                                     "AVEncCommonMeanBitRate");
+    const bool maxOk = SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncCommonMaxBitRate, bitrateBps,
+                                    "AVEncCommonMaxBitRate");
+
+    // VBV/HRD buffer, tightened from M2's bitrate/2 to a quarter second. Measured
+    // on the NVIDIA MFT this makes no difference to overshoot (run-to-run variance
+    // of +-3 Mbps swamps it), but it is the correct value for a low-latency stream
+    // and should matter on drivers that actually honour it.
+    const uint32_t vbv = bitrateBps / 4;
+    const bool vbvOk =
+        SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncCommonBufferSize, vbv, "AVEncCommonBufferSize");
+
+    LOGI("rate control: mode=%s(%s) mean=%.1fMbps(%s) max=%.1fMbps(%s) vbv=%.1fMbit/%.2fs(%s)",
+         RateControlName(rc_), modeOk ? "ok" : "REJECTED", bitrateBps / 1e6, meanOk ? "ok" : "REJECTED",
+         bitrateBps / 1e6, maxOk ? "ok" : "REJECTED", vbv / 1e6,
+         static_cast<double>(vbv) / static_cast<double>(bitrateBps), vbvOk ? "ok" : "REJECTED");
 }
 
 bool Encoder::ConfigureTypes(int width, int height, int fps, uint32_t bitrateBps) {
@@ -327,11 +362,12 @@ void Encoder::CacheSequenceHeader() {
 }
 
 bool Encoder::Initialize(ID3D11Device* device, int width, int height, int fps,
-                         uint32_t bitrateBps) {
+                         uint32_t bitrateBps, RateControlMode rc) {
     device_ = device;
     width_ = width;
     height_ = height;
     fps_ = fps;
+    rc_ = rc;
 
     HRESULT hr = MFCreateDXGIDeviceManager(&deviceManagerToken_, &deviceManager_);
     if (FAILED(hr)) {
@@ -388,11 +424,7 @@ bool Encoder::Initialize(ID3D11Device* device, int width, int height, int fps,
 
     // Bitrate/GOP settings often only stick once the output type is known.
     ConfigureCodecApi(/*afterTypes=*/true);
-    SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncCommonMeanBitRate, bitrateBps,
-                 "AVEncCommonMeanBitRate");
-    SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncCommonMaxBitRate, bitrateBps, "AVEncCommonMaxBitRate");
-    SetCodecUI32(codecApi_.Get(), CODECAPI_AVEncCommonBufferSize, bitrateBps / 2,
-                 "AVEncCommonBufferSize");
+    ApplyRateControl(bitrateBps);
 
     CacheSequenceHeader();
 
@@ -412,8 +444,8 @@ bool Encoder::Initialize(ID3D11Device* device, int width, int height, int fps,
 
     if (isAsync_ && eventGen_) eventGen_->BeginGetEvent(this, nullptr);
 
-    LOGI("encoder ready: %dx%d @%dfps, %.1f Mbps CBR, GOP=%d, B-frames=0", width, height, fps,
-         bitrateBps / 1e6, fps * 2);
+    LOGI("encoder ready: %dx%d @%dfps, %.1f Mbps %s, GOP=%d, B-frames=0(requested)", width, height,
+         fps, bitrateBps / 1e6, RateControlName(rc_), fps * 2);
     return true;
 }
 

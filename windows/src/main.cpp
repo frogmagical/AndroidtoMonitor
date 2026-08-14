@@ -54,6 +54,11 @@ struct Options {
     int height = 2400;
     double durationSec = 0.0;  // 0 = until Ctrl+C
     bool skipAdb = false;
+    bool drawCursor = true;
+    // CBR per REQUIREMENTS §4.2. Measured on the NVIDIA MFT the mode is inert (CBR
+    // and peak-constrained VBR produce byte-identical output), so the spec value
+    // stays the default and --rc exists only to re-test on other drivers/GPUs.
+    a2m::RateControlMode rc = a2m::RateControlMode::Cbr;
 };
 
 bool ParseBitrate(const std::string& s, uint32_t* out) {
@@ -81,6 +86,8 @@ void PrintUsage() {
         "  --width <n>       virtual display width to look for (default 1080)\n"
         "  --height <n>      virtual display height to look for (default 2400)\n"
         "  --duration <sec>  stop after N seconds (default 0 = run until Ctrl+C)\n"
+        "  --rc <mode>       rate control: cbr (default) | vbr (peak-constrained)\n"
+        "  --no-cursor       do not composite the mouse cursor\n"
         "  --no-adb          skip the `adb forward` step\n"
         "  --list-outputs    print all DXGI outputs and exit\n"
         "  --help\n");
@@ -104,6 +111,20 @@ bool ParseArgs(int argc, char** argv, Options* opt, bool* listOnly) {
             *listOnly = true;
         } else if (arg == "--no-adb") {
             opt->skipAdb = true;
+        } else if (arg == "--no-cursor") {
+            opt->drawCursor = false;
+        } else if (arg == "--rc") {
+            const char* v = next("--rc");
+            if (!v) return false;
+            const std::string mode = v;
+            if (mode == "cbr") {
+                opt->rc = a2m::RateControlMode::Cbr;
+            } else if (mode == "vbr") {
+                opt->rc = a2m::RateControlMode::PeakConstrainedVbr;
+            } else {
+                fprintf(stderr, "bad --rc value '%s' (expected cbr or vbr)\n", v);
+                return false;
+            }
         } else if (arg == "--port") {
             const char* v = next("--port");
             if (!v) return false;
@@ -287,15 +308,15 @@ int main(int argc, char** argv) {
 
         {
             a2m::DesktopCapture capture;
-            if (!capture.Initialize(opt.width, opt.height)) {
+            if (!capture.Initialize(opt.width, opt.height, opt.drawCursor)) {
                 exitCode = 1;
                 goto cleanup;
             }
 
             a2m::Stats stats;
             a2m::Encoder encoder;
-            if (!encoder.Initialize(capture.Device(), opt.width, opt.height, opt.fps,
-                                    opt.bitrate)) {
+            if (!encoder.Initialize(capture.Device(), opt.width, opt.height, opt.fps, opt.bitrate,
+                                    opt.rc)) {
                 LOGE("encoder initialization failed");
                 exitCode = 1;
                 goto cleanup;
@@ -331,7 +352,9 @@ int main(int argc, char** argv) {
             constexpr int kDdaTimeoutMs = 2;
 
             while (g_running.load()) {
-                if (capture.PumpFrame(kDdaTimeoutMs)) freshSinceSubmit = true;
+                // A pointer-only update counts as a frame change: otherwise the
+                // cursor would appear frozen whenever the desktop itself is static.
+                if (capture.PumpFrame(kDdaTimeoutMs).Any()) freshSinceSubmit = true;
 
                 int64_t afterPump = a2m::QpcNow();
                 if (capture.HasFrame() && afterPump < nextFrameQpc) {
@@ -383,9 +406,10 @@ int main(int argc, char** argv) {
                     const uint64_t encDropsNow = encoder.EncoderDrops();
                     const uint64_t encDropsInterval = encDropsNow - encoderDropsPrev;
                     encoderDropsPrev = encDropsNow;
+                    const a2m::CursorStats& cs = capture.Cursor();
                     LOGI("fps=%d idr=%d cap2enc_p50=%.1fms/p95=%.1fms "
                          "enc2sent_p50=%.1fms/p95=%.1fms bytes=%llu (%.1f Mbps) "
-                         "drops=%llu(send)/%llu(enc) reconn=%llu resent=%llu conn=%s",
+                         "drops=%llu(send)/%llu(enc) reconn=%llu resent=%llu cursor=%s conn=%s",
                          s.framesSent, s.idrSent, s.captureToEncodeP50Ms, s.captureToEncodeP95Ms,
                          s.encodeToSentP50Ms, s.encodeToSentP95Ms,
                          static_cast<unsigned long long>(s.bytesSent), s.bytesSent * 8.0 / 1e6,
@@ -393,7 +417,7 @@ int main(int argc, char** argv) {
                          static_cast<unsigned long long>(encDropsInterval),
                          static_cast<unsigned long long>(s.reconnects),
                          static_cast<unsigned long long>(resentInterval),
-                         sender.IsConnected() ? "up" : "down");
+                         cs.visible ? "on" : "off", sender.IsConnected() ? "up" : "down");
                     resentInterval = 0;
                 }
 
@@ -408,8 +432,11 @@ int main(int argc, char** argv) {
             sender.Stop();
             encoder.Shutdown();
 
+            const a2m::CursorStats& cs = capture.Cursor();
             LOGI("final: encoder='%s' (%s) submitted=%llu resent_static=%llu sent=%llu "
-                 "bytes=%llu drops=%llu encoder_drops=%llu reconnects=%llu",
+                 "bytes=%llu drops=%llu encoder_drops=%llu reconnects=%llu "
+                 "cursor_shapes=%llu(mono=%llu color=%llu masked=%llu inverting=%llu) "
+                 "cursor_unsupported=%llu",
                  encoder.EncoderName().c_str(), encoder.IsHardware() ? "HW" : "SW",
                  static_cast<unsigned long long>(submitted),
                  static_cast<unsigned long long>(resent),
@@ -417,7 +444,13 @@ int main(int argc, char** argv) {
                  static_cast<unsigned long long>(stats.TotalBytes()),
                  static_cast<unsigned long long>(stats.TotalDrops()),
                  static_cast<unsigned long long>(encoder.EncoderDrops()),
-                 static_cast<unsigned long long>(stats.TotalReconnects()));
+                 static_cast<unsigned long long>(stats.TotalReconnects()),
+                 static_cast<unsigned long long>(cs.shapeUpdates),
+                 static_cast<unsigned long long>(cs.monochromeShapes),
+                 static_cast<unsigned long long>(cs.colorShapes),
+                 static_cast<unsigned long long>(cs.maskedColorShapes),
+                 static_cast<unsigned long long>(cs.invertingShapes),
+                 static_cast<unsigned long long>(cs.unsupportedShapes));
         }
     }
 
